@@ -24,6 +24,7 @@
     "agents.json",
     "install.mjs",
     "cordis.patch.yml",
+    "adapters/dsh/skills/structured-dispatch/SKILL.md",
     "README.md",
     "LICENSE"
   ]

@@ -5,6 +5,7 @@ DSH / Claude Code 插件：**把 subagent 的输出焊死成固定结构**，模
 - **固定枚举 choice**（`router`）：只能从给定候选选一个。
 - **开放选项 + 置信度 open_choice**（`advisor`）：形状固定，但 `label`/理由/汇总内容**自由生成**，每条带 `confidence`(0~1)。
 - **固定 json**（`ticket`）：填一个固定结构，字段取值受 enum 约束。
+- **极简开放选项 + 置信度**（`brief`）：`advisor` 的精简版，最多 3 条、理由一句话、summary 一句——subagent **快速给结论**用。
 - **非结构化 free**：不带标记的请求完全不受影响（默认行为）。
 
 > 你的两个需求都覆盖：
@@ -105,6 +106,55 @@ PROXY_TARGET=/path/to/proxy.mjs node install.mjs
 }
 ```
 
+极简版 `brief`（subagent 快速给结论，最多 3 条、理由一句）：
+
+```json
+{
+  "brief": {
+    "description": "极简开放选项：最多 3 个方案，每条带置信度(0~1)与一句话理由；summary 一句话。",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "options": { "type": "array", "minItems": 1, "maxItems": 3, "items": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "reason": { "type": "string", "maxLength": 80 }
+          },
+          "required": ["label", "confidence", "reason"]
+        }},
+        "summary": { "type": "string", "maxLength": 120 }
+      },
+      "required": ["options", "summary"]
+    }
+  }
+}
+```
+
+> 开放内容用 `type:string` 不写 `enum`（模型临场生成）；固定候选才用 `enum`。`confidence` 的
+> `minimum/maximum` 是软约束（xgrammar 不一定夹值），插件额外 `clamp` 到 [0,1]。
+
+---
+
+## Skill：让 main 派发 subagent 拿回"简洁的开放字段和选择"
+
+仓库内含一个 DSH **skill** `adapters/dsh/skills/structured-dispatch/SKILL.md`。它是本插件的
+**"可设置 / 可选择的派发接口"**：
+
+- **选择**：skill 的 `description` frontmatter 让主 agent 在合适场景自动决定启用（分类路由、从候选里选一个、带置信度给方案、把调研结论压成 JSON …）。
+- **设置**：skill 正文列出可选的输出形状（router / brief / advisor / ticket），并说明如何**编辑 `agents.json` 加新形状**——这就是"每个 agent 配不同 schema"的用户入口。
+- **派发**：主 agent 给 subagent 配 `model: <基座>__schema=<key>`（或 `X-Agent-Name` 头），subagent 返回的就是剥壳后的干净 JSON。
+
+安装本插件（含 postinstall 钩子）后，`dsh plugin add dsh-structured-output` 会自动把 skill 加载进 DSH；
+未装代理补丁时，skill 退化成提示词级软约束，照样能引导 subagent 返回结构。
+
+---
+
+## 改完 `agents.json` 后要让改动生效
+
+`agents.json` 在装插件时被复制到代理目录旁的 `structured/`。改完仓库里的 `agents.json` 后，**重跑一次 `node install.mjs`**（幂等，marker 已存在时会跳过重复打补丁、但会刷新复制的 `agents.json`/lib），再重启代理即可。无需 `--uninstall`。
+
 ---
 
 ## 测试
@@ -130,7 +180,8 @@ BASE_URL=http://localhost:8787 node test-structured.mjs
 
 - `lib/structured.mjs` —— 注入 / 还原核心（ESM，被代理 import）
 - `agents.json` —— agent 输出形状注册表（可编辑）
-- `install.mjs` —— 代理补丁安装器（备份 / 幂等 / 卸载）
+- `install.mjs` —— 代理补丁安装器（备份 / 幂等 / 卸载 / 重跑刷新文件）
+- `adapters/dsh/skills/structured-dispatch/SKILL.md` —— DSH skill（让 main 派发 subagent 的"可设置/可选择的派发接口"）
 - `cordis.patch.yml` / `plugin-manifest.v1.json` —— DSH 市场元数据
 - `test-structured.mjs` —— 端到端测试
 

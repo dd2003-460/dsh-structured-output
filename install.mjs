@@ -68,12 +68,11 @@ if (isUninstall) {
   process.exit(0);
 }
 
-// ---------------- 已安装？幂等检查 ----------------
-let src = fs.readFileSync(PROXY_TARGET, 'utf8');
-if (src.includes('dsh-structured-output')) {
-  console.log('[install] 已安装（检测到 dsh-structured-output 标记），无需重复。如需重装请先 --uninstall。');
-  process.exit(0);
-}
+// ---------------- 把模块 + 注册表装到代理目录旁 ----------------
+// 这一步始终执行：确保 agents.json / lib 的后续改动在重跑 install 时也能刷新生效
+// （marker 只跳过"重复打补丁"，不跳过文件刷新）。
+const MODULE_URL = installModuleNextToProxy(PROXY_TARGET);
+const IMPORT_LINE = `import { detectStructuredAgent, injectStructured, unwrapStructured, loadStructuredRegistry } from '${MODULE_URL}';`;
 
 // 备份（仅首次）
 if (!fs.existsSync(BACKUP_PATH) && !isDry) {
@@ -81,9 +80,12 @@ if (!fs.existsSync(BACKUP_PATH) && !isDry) {
   console.log('[install] 已备份原代理到: ' + BACKUP_PATH);
 }
 
-// ---------------- 把模块 + 注册表装到代理目录旁 ----------------
-const MODULE_URL = installModuleNextToProxy(PROXY_TARGET);
-const IMPORT_LINE = `import { detectStructuredAgent, injectStructured, unwrapStructured, loadStructuredRegistry } from '${MODULE_URL}';`;
+// ---------------- 已安装？幂等检查（仅跳过重复打补丁，不跳过上面的文件刷新） ----------------
+let src = fs.readFileSync(PROXY_TARGET, 'utf8');
+if (src.includes('dsh-structured-output')) {
+  console.log('[install] 已安装；模块与注册表已刷新（agents.json 的改动已生效）。如需重装请先 --uninstall。');
+  process.exit(0);
+}
 
 // ---------------- 插入 import（锚点：node:child_process 之后） ----------------
 const importAnchor = "import { spawn } from 'node:child_process';";
