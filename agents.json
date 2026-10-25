@@ -9,6 +9,17 @@
       "required": ["action"]
     }
   },
+  "bench_mc": {
+    "description": "JEV 式多选决策：题目+选项写在 prompt 里（A/B/C/... 任意个数），模型只能从候选中选一个字母，并可附置信度(0~1)。用于评测/分类/路由类 subagent 任务，decode 负担 ~15 token。",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "choice": { "type": "string", "description": "正确选项的字母，如 'A'、'B'" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "对该选择的置信度" }
+      },
+      "required": ["choice", "confidence"]
+    }
+  },
   "advisor": {
     "description": "给出若干可能方案，每条带置信度(0~1)与理由。形状固定，label/summary 内容自由生成。",
     "input_schema": {

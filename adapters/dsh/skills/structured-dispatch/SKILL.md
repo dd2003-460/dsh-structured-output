@@ -42,6 +42,7 @@ decode（生成 token）是按**输出 token 数**吃算力的，尤其你这台
 | 子任务类型 | 是否用派发 subagent | 形状 |
 |---|---|---|
 | 路由 / 分类（从候选选一个） | ✅ 强推 | `router` |
+| 多选评测 / JEV 式决策（题目+选项在 prompt） | ✅ 强推 | `bench_mc` |
 | 给几个带置信度的方案（决策辅助） | ✅ 强推 | `brief` / `advisor` |
 | 抽取固定字段 / 表单填充 | ✅ 强推 | `ticket` |
 | 需要长文、创作、解释性输出 | ❌ 不该用 | 普通自由输出 |
@@ -52,8 +53,8 @@ decode（生成 token）是按**输出 token 数**吃算力的，尤其你这台
 ```
 你要把这个子任务派发出去。它是一个「决策型」任务，不需要长文。
 目标：<用一句话说清要决策什么>
-候选 / 期望：<router 给枚举；brief 说"给最多 3 个方案带置信度">
-派发方式：给 subagent 配 model: qwen3.8-27b-w8a16__schema=<router|brief|advisor|ticket>
+候选 / 期望：<router 给枚举；bench_mc 把题目和 A/B/C 选项写全；brief 说"给最多 3 个方案带置信度">
+派发方式：给 subagent 配 model: qwen3.8-27b-w8a16__schema=<router|bench_mc|brief|advisor|ticket>
 拿到返回后直接 JSON.parse 使用，不要让我（主 agent）重写结论。
 ```
 
@@ -64,6 +65,7 @@ decode（生成 token）是按**输出 token 数**吃算力的，尤其你这台
 | key | 形状 | 返回示例 | 适用 |
 |---|---|---|---|
 | `router` | 固定枚举 choice | `{"action":"calculator"}` | 二/多分类路由，只能从候选选一个 |
+| `bench_mc` | **JEV 式多选决策 + 置信度** | `{"choice":"B","confidence":0.82}` | 题目+选项写在 prompt 里（任意个数），模型只选字母；评测/分类/多选决策 |
 | `brief` | **极简开放选项 + 置信度** | `{"options":[{"label":"先用OA提","confidence":0.85,"reason":"最省事"}],"summary":"走OA"}` | subagent 快速给结论，最多 3 条、理由一句话 |
 | `advisor` | 开放选项 + 置信度（更全） | 同上但 `options` 不限条数、`reason` 可长 | 需要更充分论证时 |
 | `ticket` | 固定字段（enum 约束） | `{"priority":"HIGH","assignee":"alice"}` | 结构化工单/表单 |
