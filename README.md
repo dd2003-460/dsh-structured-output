@@ -29,9 +29,20 @@ DSH / Claude Code 的 subagent 走的是代理的 **Anthropic `/v1/messages`** �
 
 ---
 
-## 安装（代理注入，自动备份）
+## 安装
 
-本插件不改变 vLLM 模型，只在你已有的 `claude-vllm-proxy`（DSH / Claude Code 的 vLLM 翻译代理）里注入补丁。
+### 方式一（推荐）：DSH 市场安装
+
+本仓库已打 `dsh-plugin` topic，DSH Community Market 的 CI 每 2 小时自动收录。
+
+- 在 DSH 里打开 Community Market（或 1024Store / dshfind），搜索 **`dsh-structured-output`** 安装；
+- 或命令行：`dsh plugin add dsh-structured-output`。
+
+装完后，skill（`adapters/dsh/skills/structured-dispatch`）会被 DSH **自动发现并加载**，主 agent 即可按 SKILL.md 的触发条件派发 subagent——**这一步不需要你手动做任何事**。
+
+### 方式二：本地代理补丁（让硬约束真正"焊死"输出）
+
+skill 本身只是提示词级软约束；要让输出**被强制锁死**（不走样），还需把代理补丁打到你已有的 `claude-vllm-proxy`（DSH / Claude Code 的 vLLM 翻译代理）。本插件不改变 vLLM 模型，只在代理里注入补丁：
 
 ```bash
 cd dsh-structured-output
@@ -41,7 +52,7 @@ PROXY_TARGET=/path/to/proxy.mjs node install.mjs
 ```
 
 - 会把 `lib/structured.mjs` 与 `agents.json` 复制到代理目录旁的 `structured/`，代理重启后不依赖本仓库位置。
-- **重启代理后生效**（launchctl kickstart / 等价操作）。
+- **重启代理后生效**：`launchctl kickstart -k gui/$UID/com.a1-6.claude-vllm-proxy`（或重启 DSH）。
 - 卸载（恢复原代理）：`node install.mjs --uninstall`。幂等，重复安装会提示已安装。
 
 ---
@@ -146,8 +157,13 @@ PROXY_TARGET=/path/to/proxy.mjs node install.mjs
 - **设置**：skill 正文列出可选的输出形状（router / brief / advisor / ticket），并说明如何**编辑 `agents.json` 加新形状**——这就是"每个 agent 配不同 schema"的用户入口。
 - **派发**：主 agent 给 subagent 配 `model: <基座>__schema=<key>`（或 `X-Agent-Name` 头），subagent 返回的就是剥壳后的干净 JSON。
 
-安装本插件（含 postinstall 钩子）后，`dsh plugin add dsh-structured-output` 会自动把 skill 加载进 DSH；
-未装代理补丁时，skill 退化成提示词级软约束，照样能引导 subagent 返回结构。
+通过市场安装（`dsh plugin add dsh-structured-output`）后，skill 会被 DSH **自动发现并加载**；
+未装代理补丁（方式二）时，skill 退化成提示词级软约束，照样能引导 subagent 返回结构。
+
+> **派发原则（goal-template）**：当子任务只需要"决策 / 分类 / 选择 / 抽取"这类确定性输出时，
+> 强烈推荐派发一个结构化 subagent，而不是在主 agent 里自由生成长文——这能**极大减少 decode 负担**
+> （少产约一个数量级的输出 token，对 4×V100 这种 KV-bound 机器直接等于更低的延迟与显存占用）。
+> 详见 SKILL.md 的「派发原则」章节。
 
 ---
 
