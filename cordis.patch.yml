@@ -1,0 +1,17 @@
+# cordis.patch.yml —— DSH 插件包描述（bundle）
+# 说明：本插件不向 DSH harness 注入 Node 包，而是安装到用户自建的
+# claude-vllm-proxy（DSH / Claude Code 的 vLLM 翻译代理）。
+# 真正的安装动作由 install.mjs 完成（自动备份 + 幂等补丁）。
+# 若 DSH 市场的 bundle patch 机制需要不同的字段，请按市场文档调整本文件；
+# 但 install.mjs 本身不依赖本文件即可独立运行（node install.mjs）。
+name: dsh-structured-output
+version: 0.1.0
+type: bundle
+entry: install.mjs
+hooks:
+  postinstall:
+    - run: node install.mjs
+      description: 安装结构化输出补丁到 claude-vllm-proxy
+  preuninstall:
+    - run: node install.mjs --uninstall
+      description: 卸载并恢复原代理

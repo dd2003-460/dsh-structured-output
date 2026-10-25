@@ -1,0 +1,30 @@
+{
+  "name": "dsh-structured-output",
+  "version": "0.1.0",
+  "description": "DSH 插件：把 Claude Code / DSH subagent 的输出焊死成固定结构（支持固定枚举 choice、开放选项+置信度 open_choice、固定 json）。通过代理层强制工具调用实现，模型只有一个，每个 agent 配不同 schema。",
+  "type": "module",
+  "author": "a1-6",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a1-6/dsh-structured-output.git"
+  },
+  "keywords": ["dsh", "dsh-plugin", "structured-output", "vllm", "guided-decoding", "agent", "json-schema"],
+  "dsh": {
+    "version": 1,
+    "displayName": "结构化输出（按 Agent 固定 Schema）",
+    "compatibleApp": "dsh-desktop",
+    "category": "agent",
+    "bundle": {
+      "patch": "cordis.patch.yml"
+    }
+  },
+  "files": [
+    "lib/structured.mjs",
+    "agents.json",
+    "install.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ]
+}
